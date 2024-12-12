@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Группировка звуков</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        #container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .icon {
+            width: 50px;
+            height: 50px;
+            background-color: lightblue;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border: 1px solid #ccc;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .icon.playing {
+            background-color: lightgreen;
+        }
+        .icon.error {
+            background-color: red;
+        }
+        .group {
+            border: 2px dashed gray;
+            padding: 10px;
+            min-height: 60px;
+            min-width: 100px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            position: relative;
+        }
+        .delete-button {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            background: red;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>Эксперимент: группировка звуков</h1>
+    <p>Добро пожаловать, <span id="subjectName"></span>! Начнем эксперимент.</p>
+    <p>Перетащите квадратики в области группировки.</p>
+
+    <!-- Контейнер с квадратиками -->
+    <div id="container"></div>
+
+    <!-- Кнопка для создания новых групп -->
+    <button id="add-group">Создать группу</button>
+    <button id="finish">Завершить</button>
+
+    <!-- Контейнер для групп -->
+    <div id="groups"></div>
+
+    <script>
+        const container = document.getElementById('container');
+        const groupsContainer = document.getElementById('groups');
+        const numIcons = 30; // Количество квадратиков
+        const firstName = localStorage.getItem('firstName');
+        const lastName = localStorage.getItem('lastName');
+        const birthYear = localStorage.getItem('birthYear');
+        let currentAudio = null; // Текущий воспроизводимый звук
+        let playCount = {}; // Объект для хранения количества проигрываний каждого объекта
+        let groupData = {}; // Объект для хранения данных по группам
+
+        document.getElementById('subjectName').textContent = `${firstName} ${lastName}`;
+
+        // Функция для перемешивания массива с номерами
+        function shuffleArray(arr) {
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1)); // Генерируем случайный индекс
+                [arr[i], arr[j]] = [arr[j], arr[i]]; // Меняем местами элементы
+            }
+        }
+        // Создаем массив номеров от 1 до 30
+        const iconNumbers = Array.from({ length: numIcons }, (_, i) => i + 1);
+
+        // Перемешиваем массив
+        shuffleArray(iconNumbers);
+        console.log('Перемешанный массив номеров:', iconNumbers);
+
+        // Проверим, что массив перемешался
+        console.log('Перемешанный массив номеров:', iconNumbers);
+
+        // Создаем и добавляем квадратики в случайном порядке
+        for (let i = 0; i < iconNumbers.length; i++) {
+            const num = iconNumbers[i];
+            const icon = document.createElement('div');
+            icon.classList.add('icon');
+            icon.textContent = num;
+            icon.draggable = true;
+            icon.id = `icon-${num}`;
+
+            // Инициализация статистики для объекта
+            playCount[i] = 0;
+
+            // Обработчик начала перетаскивания
+            icon.addEventListener('dragstart', (e) => {
+                e.dataTransfer.setData('text/plain', e.target.id);
+            });
+
+            // Обработчик клика для воспроизведения звука
+            icon.addEventListener('click', () => {
+                // Останавливаем предыдущий звук
+                if (currentAudio) {
+                    currentAudio.pause();
+                    currentAudio.currentTime = 0;
+                    const previousIcon = document.querySelector('.icon.playing');
+                    if (previousIcon) {
+                        previousIcon.classList.remove('playing');
+                    }
+                }
+
+                // Воспроизводим новый звук
+                const audio = new Audio(`sounds/sound-${i}.mp3`);
+                currentAudio = audio;
+
+                // Обработка ошибок загрузки
+                audio.addEventListener('error', () => {
+                    icon.classList.add('error');
+                    currentAudio = null;
+                });
+
+                audio.addEventListener('ended', () => {
+                    icon.classList.remove('playing');
+                    currentAudio = null;
+                });
+
+                audio.play().then(() => {
+                    icon.classList.add('playing');
+                    playCount[i]++; // Увеличиваем счетчик проигрываний
+                }).catch(() => {
+                    icon.classList.add('error');
+                });
+            });
+            console.log(`Создан квадратик с номером: ${num}`);
+            container.appendChild(icon);
+        };
+
+        // Функция для добавления новой группы
+        document.getElementById('add-group').addEventListener('click', () => {
+            const group = document.createElement('div');
+            group.classList.add('group');
+
+            // Добавление кнопки удаления
+            const deleteButton = document.createElement('button');
+            deleteButton.classList.add('delete-button');
+            deleteButton.textContent = '×';
+            deleteButton.addEventListener('click', () => {
+                // Возвращаем все квадратики в исходный контейнер
+                const icons = group.querySelectorAll('.icon');
+                icons.forEach(icon => container.appendChild(icon));
+                // Удаляем группу
+                group.remove();
+            });
+            group.appendChild(deleteButton);
+
+            group.addEventListener('dragover', (e) => {
+                e.preventDefault();
+            });
+            group.addEventListener('drop', (e) => {
+                e.preventDefault();
+                const id = e.dataTransfer.getData('text/plain');
+                const draggedElement = document.getElementById(id);
+                group.appendChild(draggedElement);
+
+                // Обновляем данные о группе
+                const groupId = group.id || `group-${Date.now()}`;
+                group.id = groupId;
+                if (!groupData[groupId]) {
+                    groupData[groupId] = [];
+                }
+                groupData[groupId].push(draggedElement.id);
+            });
+            groupsContainer.appendChild(group);
+        });
+
+        // Обработчик для кнопки "Завершить"
+        document.getElementById('finish').addEventListener('click', () => {
+            const remainingIcons = container.querySelectorAll('.icon');
+            if (remainingIcons.length > 0) {
+                alert('Не все объекты размещены в группы!');
+            } else {
+                // Генерация статистики
+                let stats = `Информация об испытуемом:
+                Имя: ${firstName}
+                Фамилия: ${lastName}
+                Год рождения: ${birthYear}
+
+                --- Статистика эксперимента ---
+                `;
+                let totalPlays = 0;
+
+                // Сначала информация о группах
+                const groups = Object.keys(groupData);
+                stats += `\nКоличество групп: ${groups.length}\n`;
+                groups.forEach(groupId => {
+                    stats += `Группа ${groupId}: ${groupData[groupId].length} объектов (ID: ${groupData[groupId].join(', ')})\n`;
+                });
+
+                // Затем статистика по воспроизведениям
+                stats += "\nКоличество проигрываний объектов:\n";
+                for (let i = 1; i <= numIcons; i++) {
+                    stats += `Объект ${i}: ${playCount[i]} раз(а)\n`;
+                    totalPlays += playCount[i];
+                }
+
+                stats += `\nОбщее количество проигрываний: ${totalPlays}`;
+
+                // Создание текстового файла
+                const blob = new Blob([stats], { type: 'text/plain' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = 'statistika.txt';
+                link.click();
+                window.location.href = 'thank-you.html';
+            }
+        });
+    </script>
+</body>
+</html>

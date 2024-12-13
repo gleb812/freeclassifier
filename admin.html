@@ -16,6 +16,20 @@
         li {
             margin: 10px 0;
         }
+        /* Стиль для перетаскивания файлов */
+        .dropzone {
+            width: 300px;
+            height: 200px;
+            border: 2px dashed #aaa;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 20px;
+            cursor: pointer;
+        }
+        .dropzone:hover {
+            background-color: #f0f0f0;
+        }
     </style>
 </head>
 <body>
@@ -24,10 +38,21 @@
         <!-- Здесь будет отображаться список файлов -->
     </ul>
 
+    <h2>Перетащите файл сюда для загрузки:</h2>
+    <div class="dropzone" id="dropzone">
+        Перетащите файл сюда
+    </div>
+
+    <h2>Загрузить файл вручную:</h2>
+    <form id="upload-form">
+        <input type="file" id="file-input" accept=".mp3,.wav,.ogg">
+        <button type="submit">Загрузить файл</button>
+    </form>
+
     <script>
         // Функция для получения списка файлов из папки 'sounds' на GitHub
         function loadFiles() {
-            fetch('https://api.github.com/repos/gleb812/freeclassifier/contents/sounds')  // Укажите свой репозиторий
+            fetch('https://api.github.com/repos/gleb812/freeclassifer/contents/sounds')  // Укажите свой репозиторий
                 .then(response => response.json())
                 .then(data => {
                     const fileList = document.getElementById('file-list');
@@ -43,8 +68,49 @@
                 .catch(error => console.error('Ошибка при загрузке файлов:', error));
         }
 
-        // Загружаем файлы при открытии страницы
+        // Обработчик для загрузки файла через форму
+        document.getElementById('upload-form').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const fileInput = document.getElementById('file-input');
+            const file = fileInput.files[0];
+
+            if (file) {
+                uploadFile(file);
+            } else {
+                alert('Пожалуйста, выберите файл.');
+            }
+        });
+
+        // Обработчик для перетаскивания файла
+        const dropzone = document.getElementById('dropzone');
+        dropzone.addEventListener('drop', function(event) {
+            event.preventDefault();
+            const file = event.dataTransfer.files[0];
+            if (file) {
+                uploadFile(file);
+            }
+        });
+        dropzone.addEventListener('dragover', function(event) {
+            event.preventDefault();
+        });
+
+        // Функция загрузки файла
+        function uploadFile(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            // Здесь мы отправим файл на сервер для обработки
+            // Пока что просто выведем файл в консоль
+            console.log('Файл загружен:', file.name);
+
+            // Далее здесь должен быть код для обработки загрузки файла на сервер (например, через GitHub API или через GitHub Actions)
+            // Для этого вам нужно будет настроить backend или использовать GitHub Actions API
+
+            loadFiles();  // Перезагружаем список файлов
+        }
+
+        // Загружаем файлы при старте страницы
         loadFiles();
     </script>
 </body>
-</html>                    
+</html>

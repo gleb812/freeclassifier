@@ -27,7 +27,7 @@
     <script>
         // Функция для получения списка файлов из папки 'sounds' на GitHub
         function loadFiles() {
-            fetch('https://api.github.com/repos/your-username/your-repo/contents/sounds')  // Укажите свой репозиторий
+            fetch('https://api.github.com/repos/gleb812/freeclassifier/contents/sounds')  // Укажите свой репозиторий
                 .then(response => response.json())
                 .then(data => {
                     const fileList = document.getElementById('file-list');

@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Список файлов в папке sounds</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        li {
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Список файлов в папке "sounds"</h1>
+    <ul id="file-list">
+        <!-- Здесь будет отображаться список файлов -->
+    </ul>
+
+    <script>
+        // Функция для получения списка файлов из папки 'sounds' на GitHub
+        function loadFiles() {
+            fetch('https://api.github.com/repos/your-username/your-repo/contents/sounds')  // Укажите свой репозиторий
+                .then(response => response.json())
+                .then(data => {
+                    const fileList = document.getElementById('file-list');
+                    fileList.innerHTML = ''; // Очищаем список
+
+                    // Перебираем файлы и добавляем их в список
+                    data.forEach(file => {
+                        const li = document.createElement('li');
+                        li.textContent = file.name; // Имя файла
+                        fileList.appendChild(li);
+                    });
+                })
+                .catch(error => console.error('Ошибка при загрузке файлов:', error));
+        }
+
+        // Загружаем файлы при открытии страницы
+        loadFiles();
+    </script>
+</body>
+</html>                    

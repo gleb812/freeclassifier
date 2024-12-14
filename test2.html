@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Research Website</title>
+    <style>
+        .square {
+            width: 50px;
+            height: 50px;
+            background-color: lightblue;
+            transition: background-color 0.3s ease;
+            margin: 5px;
+            display: inline-block;
+            cursor: grab;
+        }
+        #squares {
+            display: flex;
+            flex-wrap: wrap;
+        }
+        .square.playing {
+            background-color: green !important;
+        }
+
+        .group {
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin: 10px 0;
+            display: flex;
+            align-items: center;
+        }
+        .group-container {
+            min-width: 100px;
+            min-height: 50px;
+            border: 1px dashed gray;
+            margin-right: 10px;
+            flex-grow: 1;
+        }
+    </style>
+</head>
+<body>
+    <div id="app"></div>
+    <script type="module">
+        // Firebase modules
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.5.0/firebase-app.js";
+        import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.5.0/firebase-firestore.js";
+        import { getStorage, ref as storageRef, listAll, uploadBytes, deleteObject, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.5.0/firebase-storage.js";
+
+        // Firebase configuration (replace with your project's config)
+        const firebaseConfig = {
+            apiKey: "AIzaSyCzONFfjijrmatuSObn57gB_YkQ27Fim08",
+            authDomain: "free-classifer.firebaseapp.com",
+            projectId: "free-classifer",
+            storageBucket: "free-classifer.firebasestorage.app",
+            messagingSenderId: "47930127864",
+            appId: "1:47930127864:web:ccbf0e2c73894a3c24520d",
+            measurementId: "G-CPYQTE3G6H"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const storage = getStorage(app);
+
+        // Simple routing
+        const routes = {
+            index: () => `
+                <h1>Welcome</h1>
+                <form id="startForm">
+                    <label for="name">Name:</label>
+                    <input type="text" id="name" required><br>
+                    <label for="year">Year of Birth:</label>
+                    <input type="number" id="year" required><br>
+                    <button type="submit">Start</button>
+                </form>
+                <button id="adminModeButton">Admin Mode</button>
+            `,
+            admin: () => `
+                <h1>Admin Panel</h1>
+                <div id="fileList"></div>
+                <input type="file" id="fileUpload">
+                <button id="uploadButton">Upload</button>
+                <button onclick="navigate('index')">Exit</button>
+            `,
+            main: () => `
+                <h1>Main Page</h1>
+                <div id="controls">
+                    <button id="createGroupButton">Создать группу</button>
+                </div>
+                <div id="squares"></div>
+                <div id="groups"></div>
+                <button id="finishButton">Finish</button>
+            `,
+            bye: () => `<h1>Thank You!</h1>
+                <button id="back-to-index">Back to Index</button>
+            `
+        };
+
+        function navigate(page, data = {}) {
+            document.getElementById('app').innerHTML = routes[page]();
+            setupPage(page, data);
+        }
+
+        function setupPage(page, data) {
+            if (page === 'index') {
+                document.getElementById('startForm').onsubmit = (e) => {
+                    e.preventDefault();
+
+                    const name = document.getElementById('name').value;
+                    const year = document.getElementById('year').value;
+
+                    navigate('main', { name, year});
+      
+                };
+
+                // Добавляем обработчик для кнопки Admin Mode
+                document.getElementById('adminModeButton').onclick = () => {
+                    navigate('admin');
+                };
+            } else if (page === 'admin') {
+                const fileList = document.getElementById('fileList');
+                const fileUpload = document.getElementById('fileUpload');
+                const uploadButton = document.getElementById('uploadButton');
+
+                const soundsRef = storageRef(storage, 'sounds');
+                listAll(soundsRef).then((res) => {
+                    console.log("Items found in storage:", res.items);
+                    fileList.innerHTML = res.items.map(item => `<div>${item.name} <button onclick="deleteFile('${item.fullPath}')">Delete</button></div>`).join('');
+                });
+
+                uploadButton.onclick = () => {
+                    const file = fileUpload.files[0];
+                    if (file) {
+                        const fileRef = storageRef(storage, `sounds/${file.name}`);
+                        uploadBytes(fileRef, file).then(() => {
+                            alert('File uploaded');
+                            navigate('admin');
+                        });
+                    }
+                };
+
+                window.deleteFile = (path) => {
+                    const fileRef = storageRef(storage, path);
+                    deleteObject(fileRef).then(() => {
+                        alert('File deleted');
+                        navigate('admin');
+                    });
+                };
+
+                document.querySelector('button[onclick="navigate(\'index\')"]').onclick = () => {
+                    navigate('index');
+                    preloadSounds();
+                };
+
+
+            } else if (page === 'main') {
+                const squares = document.getElementById('squares');
+                const groups = document.getElementById('groups');
+                const createGroupButton = document.getElementById('createGroupButton');
+                const finishButton = document.getElementById('finishButton');
+
+
+                // Предзагрузка звуков и генерация квадратиков
+                preloadSounds().then((soundPaths) => {
+                    if (!Array.isArray(soundPaths) || soundPaths.length === 0) {
+                        console.error("No sounds found or preload failed.", soundPaths);
+                        return;
+                    }
+
+                    console.log("Sounds preloaded, generating squares");
+
+                    // Генерация квадратиков с добавлением данных
+                    squares.innerHTML = soundPaths.map((path, index) => `
+                        <div class='square' id='square-${index}' draggable="true" data-sound-url="${path}"
+                            data-filename="${path}" data-plays="0">${index + 1}</div>
+                    `).join('');
+
+                    addDragAndDrop();
+                    setupSoundPlayback();
+                });
+
+
+                // Создание новой группы
+                createGroupButton.onclick = () => {
+                    const groupId = `group-${Date.now()}`;
+                    const group = document.createElement('div');
+                    group.className = 'group';
+                    group.id = groupId;
+                    group.innerHTML = `
+                        <div class="group-container" ondrop="onDrop(event, '${groupId}')" ondragover="event.preventDefault()"></div>
+                        <button class="deleteGroupButton" onclick="deleteGroup('${groupId}')">✖</button>
+                    `;
+                    groups.appendChild(group);
+                };
+
+                // Удаление группы
+                window.deleteGroup = (groupId) => {
+                    const group = document.getElementById(groupId);
+                    const squaresInGroup = group.querySelectorAll('.square');
+
+                    squaresInGroup.forEach((square) => {
+                        squares.appendChild(square); // Возвращаем квадраты в исходный пул
+                    });
+
+                    group.remove();
+                };
+
+                // Drag-and-drop behavior
+                function addDragAndDrop() {
+                    document.querySelectorAll('.square').forEach(square => {
+                        square.addEventListener('dragstart', (e) => {
+                            e.dataTransfer.setData('squareId', e.target.id); // Сохраняем id квадратика
+                        });
+                    });
+                }
+
+                window.onDrop = (e, groupId) => {
+                    e.preventDefault();
+                    const squareId = e.dataTransfer.getData('squareId');
+                    const square = document.getElementById(squareId); // Находим квадратик по id
+
+                    if (square) {
+                        const groupContainer = document.getElementById(groupId).querySelector('.group-container');
+                        groupContainer.appendChild(square); // Перемещаем квадратик в контейнер группы
+                    } else {
+                        console.error('Square not found!');
+                    }
+                };
+
+                let currentAudio = null; // Храним текущий аудиофайл
+                let soundCache = {}; // Храним загруженные звуковые файлы
+
+                async function preloadSounds() {
+                    const soundsRef = storageRef(storage, 'sounds');
+                    const soundPaths = []; // Массив для путей
+                    try {
+                        const res = await listAll(soundsRef);
+                        console.log("Files found in storage:", res.items.map(item => item.fullPath)); // Лог всех файлов
+                        for (const item of res.items) {
+                            const soundUrl = await getDownloadURL(item); // Получаем URL
+                            console.log(`Loading sound from URL: ${soundUrl}`); // Лог загрузки
+                            const response = await fetch(soundUrl);
+                            const blob = await response.blob();
+
+                            const key = item.fullPath; // Полный путь как ключ
+                            soundCache[key] = URL.createObjectURL(blob); // Кэшируем URL
+                            soundPaths.push(key); // Добавляем путь в массив
+
+                            console.log(`Sound preloaded: ${key}`); // Лог успешной загрузки
+                        }
+                        console.log("All sounds preloaded into cache:", Object.keys(soundCache)); // Кэшированные ключи
+                        return soundPaths; // Возвращаем массив
+                    } catch (error) {
+                        console.error("Error preloading sounds:", error);
+                        return []; // В случае ошибки возвращаем пустой массив
+                    }
+                }
+
+
+                function setupSoundPlayback() {
+                    document.querySelectorAll('.square').forEach(square => {
+                        square.addEventListener('click', () => {
+                            const soundPath = square.getAttribute('data-sound-url');
+                                let plays = parseInt(square.dataset.plays) || 0;
+                                plays++;  // Увеличиваем счетчик на 1
+                                square.dataset.plays = plays;  // Обновляем значение в dataset
+                                console.log(`File ${square.dataset.filename} played ${plays} times.`);  // Для дебага
+                            if (!soundCache[soundPath]) {
+                                console.warn(`Sound not found in cache for path: ${soundPath}`);
+                                console.log("Cached paths:", Object.keys(soundCache)); // Лог всех ключей
+                                return;
+                            }
+
+                            console.log(`Square clicked: ${soundPath}`); // Лог пути
+
+                            if (!soundPath) {
+                                console.warn("No sound URL found for square");
+                                return;
+                            }
+
+                            const soundUrl = soundCache[soundPath]; // Используем ключ из кэша
+                            if (!soundUrl) {
+                                console.warn(`Sound not found in cache for path: ${soundPath}`);
+                                console.log("Cached paths:", Object.keys(soundCache)); // Лог всех ключей
+                                return;
+                            }
+
+                            // Если уже играет звук, останавливаем его
+                            if (currentAudio) {
+                                console.log("Stopping current audio");
+                                currentAudio.pause();
+                                currentAudio.currentTime = 0;
+                                document.querySelector('.square.playing')?.classList.remove('playing');
+                            }
+
+                            console.log(`Playing sound: ${soundPath}`);
+                            const audio = new Audio(soundUrl);
+                            currentAudio = audio;
+
+                            // Меняем цвет квадрата
+                            square.classList.add('playing');
+                            audio.play().catch(error => console.error("Error playing audio:", error));
+
+                            audio.onended = () => {
+                                console.log("Audio finished");
+                                square.classList.remove('playing');
+                                currentAudio = null;
+                            };
+                        });
+                    });
+                }
+
+
+
+                finishButton.onclick = async () => {
+                    const { name, year } = data;
+
+                    // Проверяем, остались ли квадраты в пуле
+                    const remainingSquares = document.querySelectorAll('#squares .square');
+                    if (remainingSquares.length > 0) {
+                        alert('Остались объекты вне классов! Разнесите все квадраты по группам, чтобы завершить.');
+                        return;
+                    }
+
+                    // Собираем данные о группах
+                    const groups = document.querySelectorAll('.group'); // Все группы
+                    const groupData = [];
+                    let totalSquares = 0;
+
+                    groups.forEach((group) => {
+                        const squares = group.querySelectorAll('.square');
+                        if (squares.length > 0) {
+                            const files = Array.from(squares).map((square) => square.dataset.filename || 'unknown'); // Имя файла или 'unknown'
+                            const plays = Array.from(squares).map((square) => parseInt(square.dataset.plays) || 0);  // Кол-во прослушиваний или 0
+
+
+                            groupData.push({
+                                groupName: group.dataset.groupName || 'Unnamed Group',
+                                fileCount: squares.length,
+                                files,
+                                plays,
+                                totalGroupPlays: plays.reduce((sum, count) => sum + count, 0)
+                            });
+
+                            totalSquares += squares.length;
+                        }
+                    });
+
+                    // Формируем объект для Firestore
+                    const resultData = {
+                        name: name || 'Anonymous',
+                        year: year || 'Unknown',
+                        date: new Date().toISOString(),
+                        nonEmptyGroups: groupData.length,
+                        totalSquares,
+                        groups: groupData,
+                        totalPlays: groupData.reduce((sum, group) => sum + group.totalGroupPlays, 0)
+                    };
+                    console.log('Result data:', resultData);
+                    try {
+                        // Добавляем данные в Firestore
+                        const docRef = await addDoc(collection(db, 'results'), resultData);
+                        console.log('Document written with ID: ', docRef.id);
+                        navigate('bye');
+                    } catch (e) {
+                        console.error('Error adding document: ', e);
+                    }
+                };
+
+            }
+        }
+
+        navigate('index');
+    </script>
+</body>
+</html>

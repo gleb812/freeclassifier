@@ -62,7 +62,7 @@
         const db = getFirestore(app);
         const storage = getStorage(app);
 
-        // Simple routing
+        //<button id="adminModeButton">Admin Mode</button>
         const routes = {
             index: () => `
                 <h1>Welcome</h1>
@@ -73,7 +73,6 @@
                     <input type="number" id="year" required><br>
                     <button type="submit">Start</button>
                 </form>
-                <button id="adminModeButton">Admin Mode</button>
             `,
             admin: () => `
                 <h1>Admin Panel</h1>

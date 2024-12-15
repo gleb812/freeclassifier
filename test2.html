@@ -281,14 +281,42 @@
                     try {
                         const res = await listAll(soundsRef);
                         console.log("Files found in storage:", res.items.map(item => item.fullPath)); // Лог всех файлов
+
+
                         for (const item of res.items) {
-                            const soundUrl = await getDownloadURL(item); // Получаем URL
-                            console.log(`Loading sound from URL: ${soundUrl}`); // Лог загрузки
-                            const response = await fetch(soundUrl);
-                            const blob = await response.blob();
+                            //const soundUrl = await getDownloadURL(item); // Получаем URL
+                            //console.log(`Loading sound from URL: ${soundUrl}`); // Лог загрузки
+                            //const response = await fetch(soundUrl);
+                            //const blob = await response.blob();
 
                             const key = item.fullPath; // Полный путь как ключ
-                            soundCache[key] = URL.createObjectURL(blob); // Кэшируем URL
+                            if (localStorage.getItem(key)) {
+                                // Если звук уже есть в localStorage
+                                console.log(`Sound found in localStorage: ${key}`);
+                                soundCache[key] = localStorage.getItem(key);
+                            } else {
+                                // Если звука нет, загружаем из облака
+                                console.log(`Sound not in localStorage, fetching from cloud: ${key}`);
+                                const soundUrl = await getDownloadURL(item); // Получаем URL
+                                const response = await fetch(soundUrl);
+                                const blob = await response.blob();
+                                const blobUrl = URL.createObjectURL(blob);
+
+                                soundCache[key] = blobUrl; // Сохраняем в кэше
+
+                                // Сохраняем звук в localStorage (base64-строка)
+                                const reader = new FileReader();
+                                reader.onload = function () {
+                                    localStorage.setItem(key, reader.result);
+                                    console.log(`Sound cached in localStorage: ${key}`);
+                                };
+                                reader.readAsDataURL(blob);
+                            }
+
+                            //soundCache[key] = URL.createObjectURL(blob); // Кэшируем URL
+
+
+
                             soundPaths.push(key); // Добавляем путь в массив
 
                             console.log(`Sound preloaded: ${key}`); // Лог успешной загрузки

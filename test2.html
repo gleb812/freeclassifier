@@ -61,9 +61,17 @@
             background-color: lightblue;
             transition: background-color 0.3s ease;
             margin: 5px;
-            display: inline-block;
+            display: flex; /* Включаем flexbox для центрирования */
+            justify-content: center; /* Горизонтальное выравнивание */
+            align-items: center; /* Вертикальное выравнивание */
+            font-size: 1.5rem; /* Размер шрифта для номера */
+            font-weight: bold; /* Более жирный шрифт */
+            color: #000; /* Цвет текста */
             cursor: grab;
+            border: 1px solid #ccc; /* Добавление рамки (опционально) */
+            border-radius: 5px; /* Скругление углов (опционально) */
         }
+
         #squares {
             display: flex;
             flex-wrap: wrap;

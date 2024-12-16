@@ -73,8 +73,11 @@
         }
 
         #squares {
-            display: flex;
-            flex-wrap: wrap;
+            display: flex; /* Используем flexbox для размещения квадратов */
+            flex-wrap: wrap; /* Позволяем квадратам переноситься на следующую строку, если они не помещаются */
+            gap: 10px; /* Добавляем отступы между квадратами */
+            justify-content: flex-start; /* Выравнивание квадратов по началу строки */
+            align-items: center; /* Центрирование квадратов по вертикали внутри строки (опционально) */
         }
         .square.playing {
             background-color: green !important;

@@ -61,22 +61,17 @@
             background-color: lightblue;
             transition: background-color 0.3s ease;
             margin: 5px;
-            display: flex; /* Включаем flexbox для центрирования */
-            justify-content: center; /* Горизонтальное выравнивание */
-            align-items: center; /* Вертикальное выравнивание */
+            display: flex;
             font-size: 1.5rem; /* Размер шрифта для номера */
             font-weight: bold; /* Более жирный шрифт */
             color: #000; /* Цвет текста */
-            cursor: grab;
-            border: 1px solid #ccc; /* Добавление рамки (опционально) */
-            border-radius: 5px; /* Скругление углов (опционально) */
+            cursor: grab; /* Курсор в виде захвата */
+            border: 1px solid #ccc; /* Добавление рамки */
+            border-radius: 5px; /* Скругление углов */
         }
-
         #squares {
-            display: flex; /* Используем flexbox для размещения квадратов */
-            flex-wrap: wrap; /* Позволяем квадратам переноситься на следующую строку, если они не помещаются */
-            gap: 10px; /* Добавляем отступы между квадратами */
-            justify-content: flex-start; /* Выравнивание квадратов по началу строки */
+            display: flex;
+            flex-wrap: wrap;
         }
         .square.playing {
             background-color: green !important;
